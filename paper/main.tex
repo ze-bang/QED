@@ -719,7 +719,7 @@ GPU. This is one process and a single Python interpreter; no shell
 glue, no \texttt{InterAll.dat} round-trip.
 
 \begin{lstlisting}[language=Python]
-import quantum_ed as qed
+import qed as qed
 
 lat = qed.input.lattice.chain(12, pbc=True)
 op  = (qed.input.HamiltonianBuilder(lat.num_sites)
