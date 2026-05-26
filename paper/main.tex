@@ -278,17 +278,20 @@ indirection while a dedicated GPU LOBPCG is being prepared).
 \subsection{Axis 1: \textsc{solver}}
 \label{sec:axes-solver}
 The \texttt{DiagonalizationMethod} enum names the \emph{algorithm}
-only --- not the backend. The currently shipped values are
-\texttt{LANCZOS}, \texttt{LANCZOS\_SELECTIVE}, \texttt{LANCZOS\_NO\_ORTHO},
-\texttt{BLOCK\_LANCZOS}, \texttt{KRYLOV\_SCHUR},
-\texttt{BLOCK\_KRYLOV\_SCHUR}, \texttt{DAVIDSON}, \texttt{LOBPCG},
-\texttt{CHEBYSHEV\_FILTERED}, \texttt{SHIFT\_INVERT[\_ROBUST]},
-\texttt{IMPLICIT\_RESTART\_LANCZOS}, \texttt{THICK\_RESTART\_LANCZOS},
-\texttt{BICG}, \texttt{ARPACK\_SM}, \texttt{ARPACK\_LM},
-\texttt{ARPACK\_SHIFT\_INVERT}, \texttt{ARPACK\_ADVANCED},
-\texttt{FULL}, \texttt{OSS}, \texttt{SCALAPACK},
-\texttt{SCALAPACK\_MIXED}, \texttt{FTLM}, \texttt{LTLM}, \texttt{HYBRID},
-\texttt{mTPQ}, and \texttt{cTPQ}.
+only --- not the backend. After the May~2026 surface-unification
+collapse, the currently shipped values are
+\texttt{LANCZOS}, \texttt{BLOCK\_LANCZOS}, \texttt{KRYLOV\_SCHUR},
+\texttt{FULL}, \texttt{FTLM}, \texttt{LTLM}, \texttt{KPM\_DOS},
+\texttt{mTPQ}, and \texttt{cTPQ}. The retired
+\texttt{LANCZOS\_SELECTIVE} / \texttt{LANCZOS\_NO\_ORTHO} /
+\texttt{BLOCK\_KRYLOV\_SCHUR} / \texttt{DAVIDSON} / \texttt{LOBPCG} /
+\texttt{CHEBYSHEV\_FILTERED} / \texttt{SHIFT\_INVERT[\_ROBUST]} /
+\texttt{IMPLICIT\_RESTART\_LANCZOS} / \texttt{THICK\_RESTART\_LANCZOS} /
+\texttt{BICG} / \texttt{ARPACK\_*} / \texttt{OSS} / \texttt{SCALAPACK*} /
+\texttt{HYBRID} algorithms were dropped together with the legacy
+dispatcher; the seven kernels above cover the same regimes through
+the orthogonal \textsc{fixed\_sz}, \textsc{symmetry}, GPU, and MPI
+axes documented in this section.
 
 \subsection{Axis 2: \textsc{fixed\_sz}}
 \label{sec:axes-fixedsz}
@@ -369,10 +372,10 @@ least one Catch2 or pytest case that exercises it.
 
 \begin{table}[t]
 \centering
-\caption{Capability matrix of the five-axis dispatcher.
-Every (\checkmark) cell has at least one regression test in the
-shipped 150 + 197 test suite. \texttt{LOBPCG\_GPU} is currently
-implemented by aliasing to the GPU Davidson kernel.}
+\caption{Capability matrix of the unified orchestrator
+(\texttt{ed::workflows::\{solve,thermal,spectral\}}) over the
+post-collapse algorithm set. Every (\checkmark) cell has at least
+one regression test in the shipped test suite.}
 \label{tab:capability}
 \small
 \setlength{\tabcolsep}{4pt}
@@ -381,29 +384,19 @@ implemented by aliasing to the GPU Davidson kernel.}
 Solver  & CPU & GPU & MPI & fixed-Sz & symm \\
 \midrule
 \texttt{LANCZOS}                  & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
-\texttt{LANCZOS\_SELECTIVE}       & \checkmark & --         & \checkmark & \checkmark & \checkmark \\
-\texttt{LANCZOS\_NO\_ORTHO}       & \checkmark & --         & \checkmark & \checkmark & \checkmark \\
 \texttt{BLOCK\_LANCZOS}           & \checkmark & \checkmark & --         & \checkmark & \checkmark \\
 \texttt{KRYLOV\_SCHUR}            & \checkmark & \checkmark & --         & \checkmark & \checkmark \\
-\texttt{BLOCK\_KRYLOV\_SCHUR}     & \checkmark & \checkmark & --         & \checkmark & \checkmark \\
-\texttt{DAVIDSON}                 & \checkmark & \checkmark & --         & \checkmark & \checkmark \\
-\texttt{LOBPCG}                   & \checkmark & \checkmark$^\dagger$ & --         & \checkmark & \checkmark \\
-\texttt{CHEBYSHEV\_FILTERED}      & \checkmark & --         & --         & \checkmark & --         \\
-\texttt{SHIFT\_INVERT[\_ROBUST]}  & \checkmark & --         & --         & \checkmark & --         \\
-\texttt{IRL} / \texttt{TRL} / \texttt{BICG} & \checkmark & -- & --         & \checkmark & --         \\
-\texttt{ARPACK\_*}                & \checkmark & --         & --         & \checkmark & \checkmark \\
-\texttt{FULL} / \texttt{OSS}      & \checkmark & \checkmark$^{\ddagger}$ & --   & \checkmark$^{\ddagger}$ & --         \\
-\texttt{SCALAPACK[\_MIXED]}       & --         & --         & \checkmark & \checkmark$^{\ddagger}$ & --         \\
+\texttt{FULL}                     & \checkmark & \checkmark$^{\ddagger}$ & --   & \checkmark$^{\ddagger}$ & --         \\
 \texttt{FTLM}                     & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
-\texttt{LTLM} / \texttt{HYBRID}   & \checkmark & --         & --         & \checkmark & \checkmark \\
+\texttt{LTLM}                     & \checkmark & --         & --         & \checkmark & \checkmark \\
+\texttt{KPM\_DOS}                 & \checkmark & --         & --         & \checkmark & \checkmark \\
 \texttt{mTPQ}                     & \checkmark & \checkmark & --         & \checkmark & \checkmark \\
 \texttt{cTPQ}                     & \checkmark & \checkmark & \checkmark$^{\S}$ & \checkmark & \checkmark \\
 \bottomrule
 \end{tabular}
 \par\smallskip
 \footnotesize
-$^\dagger$ \texttt{LOBPCG\_GPU} aliases the GPU Davidson kernel.
-$^{\ddagger}$ Dense kernels auto-split Sz sectors when applicable.
+$^{\ddagger}$ Dense \texttt{FULL} auto-splits Sz sectors when applicable.
 $^{\S}$ MPI canonical TPQ via \texttt{ed::distributed::distributed\_tpq};
 microcanonical mTPQ has no MPI driver (use sample-parallel CPU runs).
 \normalsize
@@ -494,9 +487,11 @@ with $|r\rangle$ a random vector and the matrix exponentials evaluated
 in the Lanczos basis it builds against $H |r\rangle$. The
 Low-Temperature Lanczos Method (LTLM)~\cite{Aichhorn2003LTLM} uses a
 ground-state-projected stochastic recipe that converges faster at
-low $T$ but at higher cost per sample. Our \texttt{HYBRID} method
-auto-crosses over from LTLM at low $T$ to FTLM at high $T$ at a
-user-controllable boundary.
+low $T$ but at higher cost per sample. The post-collapse orchestrator
+exposes both as first-class \texttt{ed::workflows::thermal} methods;
+the historical \texttt{HYBRID} alias (an automatic LTLM-at-low-$T$,
+FTLM-at-high-$T$ crossover) was retired in the May~2026 cleanup ---
+users now choose explicitly or call both and merge.
 
 \subsection{Thermal Pure Quantum states}
 The TPQ family contains two physically distinct algorithms that share
@@ -733,15 +728,14 @@ info = qed.symmetry.group_from_generators(
 )
 op.set_symmetry_info_from_dict(info)
 
-p = qed.EDParameters()
-p.num_eigenvalues = 4
-p.tolerance       = 1e-12
-p.use_fixed_sz    = True; p.n_up = 6
-p.use_gpu         = qed.has_cuda_build()
-p.use_symmetry    = True
-
-res = qed.exact_diagonalization_core(
-    op, qed.DiagonalizationMethod.KRYLOV_SCHUR, p,
+res = qed.solve(
+    op,
+    method="KrylovSchur",
+    num_eigenvalues=4,
+    tolerance=1e-12,
+    sz=6,                      # auto-pick the Sz=6 sector
+    device="gpu" if qed.has_cuda_build() else "cpu",
+    symmetry="auto",           # pick up automorphism_results/ if present
 )
 print("E0..E3 =", sorted(res.eigenvalues)[:4])
 \end{lstlisting}
@@ -766,41 +760,40 @@ if qed.has_mpi_build():
 The same five-axis call from C++:
 
 \begin{lstlisting}[language=C++]
-#include <ed/core/ed_dispatch_symmetry.h>
-#include <ed/core/operator.h>
+#include <ed/core/make_operator.h>
+#include <ed/orchestrator.h>
 
-auto op = std::make_shared<Operator>(/*N=*/12);
-op->loadFromInterAllFile("InterAll.dat");
+ed::OperatorSpec spec;
+spec.source              = ed::DirectoryPath{"./chain12"};
+spec.use_fixed_sz        = true;
+spec.n_up                = 6;
+spec.use_symmetry        = true;        // auto-detect automorphisms
+auto op = ed::make_operator(spec);
 
-EDParameters p;
-p.num_eigenvalues = 4;
-p.tolerance       = 1e-12;
-p.use_fixed_sz    = true; p.n_up = 6;
-p.use_gpu         = true;
-p.use_symmetry    = true;
+ed::workflows::SolveOptions opts;
+opts.num_eigs   = 4;
+opts.tolerance  = 1e-12;
+opts.method     = ed::workflows::SolveMethod::KrylovSchur;
+opts.constraints.allow_gpu = true;       // GPU lane on; CPU fallback ok
 
-auto res = ed_dispatch::exact_diagonalization_from_directory(
-    "./chain12", DiagonalizationMethod::KRYLOV_SCHUR, p);
+auto res = ed::workflows::solve(*op, opts);
 std::cout << "E0 = " << res.eigenvalues[0] << "\n";
 \end{lstlisting}
 
 \subsection{CLI}
 \label{sec:usage-cli}
 
-Every flag on \texttt{EDParameters} is exposed through
-\texttt{./ED}. The Phase~8 ScaLAPACK auto-block-size and explicit
-override are wired through:
+Every option on \texttt{SolveOptions} / \texttt{ThermalOptions} /
+\texttt{SpectralOptions} is exposed through \texttt{./ED}, which
+parses the deck into an \texttt{ed::OperatorSpec} and dispatches to
+the orchestrator:
 
 \begin{lstlisting}[language=bash]
-./ED ./chain24 --method=SCALAPACK \
-              --eigenvalues=8 \
-              --scalapack-nprow=4 --scalapack-npcol=4 \
-              --scalapack-block-size-auto      # default
-./ED ./chain24 --method=SCALAPACK \
-              --scalapack-block-size=128       # implicit auto-off
+./ED ./chain24 --method=KRYLOV_SCHUR \
+              --eigenvalues=8 --use-symmetry
 
-mpiexec -n 16 ./ED ./chain24 --method=LANCZOS_MPI \
-              --symm --tolerance=1e-12
+mpiexec -n 16 ./ED ./chain24 --method=LANCZOS \
+              --use-mpi --use-symmetry --tolerance=1e-12
 \end{lstlisting}
 
 % =========================================================================
